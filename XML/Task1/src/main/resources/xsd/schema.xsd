@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="qualified">
+
+    <!-- Enumerations -->
+    <xsd:simpleType name="GenderType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="Male"/>
+            <xsd:enumeration value="Female"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="FamilyConnectionType">
+        <xsd:attribute name="id" type="xsd:IDREF" use="required"/>
+    </xsd:complexType>
+
+
+    <xsd:complexType name="SiblingsType">
+        <xsd:sequence>
+            <xsd:element name="sister" type="FamilyConnectionType" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="brother" type="FamilyConnectionType" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+
+    <xsd:complexType name="ParentsType">
+        <xsd:sequence>
+            <xsd:element name="father" type="FamilyConnectionType" minOccurs="0" maxOccurs="1" />
+            <xsd:element name="mother" type="FamilyConnectionType" minOccurs="0" maxOccurs="1" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+
+    <xsd:complexType name="ChildrenType">
+        <xsd:sequence>
+            <xsd:element name="son" type="FamilyConnectionType" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="daughter" type="FamilyConnectionType" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+
+    <xsd:complexType name="PersonType">
+        <xsd:sequence>
+            <xsd:element name="wife" type="FamilyConnectionType" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="husband" type="FamilyConnectionType" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="parents" type="ParentsType" minOccurs="0" />
+            <xsd:element name="siblings" type="SiblingsType" minOccurs="0" />
+            <xsd:element name="children" type="ChildrenType" minOccurs="0" />
+        </xsd:sequence>
+
+        <xsd:attribute name="id" type="xsd:ID" use="required"/>
+        <xsd:attribute name="gender" type="GenderType"/>
+        <xsd:attribute name="firstName" type="xsd:string" use="optional"/>
+        <xsd:attribute name="lastName" type="xsd:string" use="optional"/>
+        <xsd:attribute name="childrenNumber" type="xsd:integer" use="optional"/>
+        <xsd:attribute name="siblingsNumber" type="xsd:integer" use="optional"/>
+    </xsd:complexType>
+
+    <xsd:element name="people">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="person" type="PersonType" maxOccurs="unbounded"/>
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+</xsd:schema>
+
