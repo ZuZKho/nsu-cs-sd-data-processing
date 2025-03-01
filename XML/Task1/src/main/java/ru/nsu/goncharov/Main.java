@@ -1,9 +1,7 @@
 package ru.nsu.goncharov;
 
-import ru.nsu.goncharov.dto.Child;
-import ru.nsu.goncharov.dto.Parent;
-import ru.nsu.goncharov.dto.Sibling;
-import ru.nsu.goncharov.dto.Spouse;
+import ru.nsu.goncharov.autogen.*;
+import ru.nsu.goncharov.dto.*;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
@@ -13,6 +11,7 @@ import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.math.BigInteger;
 import java.util.*;
 
 import static ru.nsu.goncharov.dto.Parent.ParentType.Father;
@@ -24,10 +23,153 @@ import static ru.nsu.goncharov.dto.Spouse.SpouceType.Wife;
 
 public class Main {
 
-    private static Stack<String> xmlStack = new Stack<>();
-    private static PersonLibrary lib = new PersonLibrary();
+    private static final Stack<String> xmlStack = new Stack<>();
+    private static final PersonLibrary lib = new PersonLibrary();
 
     public static void main(String[] args) {
+
+        var result = collectData();
+
+        // Transfer
+        People people = transfer(result);
+        HashMap<String, PersonType> hashMap = new HashMap<>();
+        people.getPerson().forEach(it -> {
+            hashMap.put(it.getId(), it);
+        });
+        addConnections(people, hashMap, result);
+
+        Exporter.export("src/main/resources/result.xml", people);
+    }
+
+    private static People transfer(List<Person> data) {
+        People people = new People();
+        data.forEach(it -> {
+            PersonType person = new PersonType();
+            person.setId(it.id);
+            if (it.gender != null) {
+                person.setGender(it.gender == Gender.Male ? GenderType.MALE : GenderType.FEMALE);
+            }
+            if (it.firstName != null) {
+                person.setFirstName(it.firstName);
+            }
+            if (it.lastName != null) {
+                person.setLastName(it.lastName);
+            }
+            if (it.siblingsNumber != null) {
+                person.setSiblingsNumber(new BigInteger(String.valueOf(it.siblingsNumber)));
+            }
+            if (it.childrenNumber != null) {
+                person.setChildrenNumber(new BigInteger(String.valueOf(it.childrenNumber)));
+            }
+
+            people.getPerson().add(person);
+        });
+
+        return people;
+    }
+
+
+    private static void addConnections(People people, HashMap<String, PersonType> hashMap, List<Person> data) {
+
+        // Add siblings
+        data.forEach(it -> {
+
+            if (it.siblings != null) {
+                SiblingsType siblings = new SiblingsType();
+
+                for (Sibling sibling : it.siblings) {
+
+                    FamilyConnectionType connection = new FamilyConnectionType();
+                    if (hashMap.get(sibling.getId()) == null) {
+                        continue;
+                    }
+
+                    connection.setId(hashMap.get(sibling.getId()));
+
+                    if (sibling.siblingType == Sister || hashMap.get(sibling.getId()).getGender() == GenderType.FEMALE) {
+                        siblings.getSister().add(connection);
+                    } else if (sibling.siblingType == Brother || hashMap.get(sibling.getId()).getGender() == GenderType.MALE) {
+                        siblings.getBrother().add(connection);
+                    } else {
+                        System.out.println("Internal sibling gender error.");
+                    }
+                }
+
+                hashMap.get(it.id).setSiblings(siblings);
+            }
+
+            if (it.children != null) {
+                ChildrenType children = new ChildrenType();
+
+                for (Child child : it.children) {
+
+                    FamilyConnectionType connection = new FamilyConnectionType();
+                    if (hashMap.get(child.getId()) == null) {
+                        continue;
+                    }
+
+                    connection.setId(hashMap.get(child.getId()));
+
+                    if (child.childType == Child.ChildType.Daughter || hashMap.get(child.getId()).getGender() == GenderType.FEMALE) {
+                        children.getDaughter().add(connection);
+                    } else if (child.childType == Child.ChildType.Son || hashMap.get(child.getId()).getGender() == GenderType.MALE) {
+                        children.getSon().add(connection);
+                    } else {
+                        System.out.println("Internal child gender error.");
+                    }
+                }
+
+                hashMap.get(it.id).setChildren(children);
+            }
+
+            if (it.parents != null && !it.parents.isEmpty()) {
+                ParentsType parents = new ParentsType();
+
+                for (Parent parent : it.parents) {
+
+                    FamilyConnectionType connection = new FamilyConnectionType();
+                    if (hashMap.get(parent.getId()) == null) {
+                        if (!parent.getId().equals("UNKNOWN")) {
+                        }
+                        continue;
+                    }
+
+                    connection.setId(hashMap.get(parent.getId()));
+
+                    if (parent.parentType == Mother || hashMap.get(parent.getId()).getGender() == GenderType.FEMALE) {
+                        parents.setMother(connection);
+                    } else if (parent.parentType == Father || hashMap.get(parent.getId()).getGender() == GenderType.MALE) {
+                        parents.setFather(connection);
+                    } else {
+                        System.out.println("Internal child gender error.");
+                    }
+                }
+
+                hashMap.get(it.id).setParents(parents);
+            }
+
+            if (it.spouse != null) {
+                FamilyConnectionType connection = new FamilyConnectionType();
+                if (hashMap.get(it.spouse.getId()) == null) {
+                    if (!it.spouse.getId().equals("NONE")) {
+                        // System.out.println("Spouce skipped: " + it.spouse.getId());
+                    }
+                } else {
+                    connection.setId(hashMap.get(it.spouse.getId()));
+
+                    if (it.spouse.spouceType == Wife || hashMap.get(it.spouse.getId()).getGender() == GenderType.FEMALE) {
+                        hashMap.get(it.id).setWife(connection);
+                    } else if (it.spouse.spouceType == Husband || hashMap.get(it.spouse.getId()).getGender() == GenderType.MALE) {
+                        hashMap.get(it.id).setHusband(connection);
+                    } else {
+                        System.out.println("Internal spouce gender error.");
+                    }
+                }
+            }
+        });
+    }
+
+    private static List<Person> collectData() {
         String path = "src/main/resources/people.xml";
         XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
 
@@ -91,8 +233,7 @@ public class Main {
             throw new RuntimeException(e);
         }
 
-        var results = lib.finish();
-        System.out.println(results.size());
+        return lib.finish();
     }
 
     private static List<String> getCallStack() {
